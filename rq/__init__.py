@@ -42,9 +42,9 @@ def recv_task(queue_name, callback):
     channel.queue_bind(exchange='messages',
                        queue=queue_name,
                        routing_key=queue_name)
-    channel.basic_consume(callback,
-                          queue=queue_name,
-                          no_ack=False)
+    channel.basic_consume(queue=queue_name,
+                          on_message_callback=callback,
+                          auto_ack=False)
     channel.basic_qos(prefetch_count=1)
     channel.start_consuming()
     print(' [*] Waiting for messages. To exit press CTRL+C')
