@@ -12,12 +12,17 @@ xp_session = requests.session()
 ua = UserAgent()
 db_pool = get_db_pool(False)
 head = {
-    'Host': 'xiapi.xiapibuy.com',
+    # 'Host': 'xiapi.xiapibuy.com',
+    # 'Host': 'shopee.co.th',
+    'Host': 'th.xiapibuy.com',
     'User-Agent': ua.random,
     'DNT': '1',
     'TE': 'Trailers'
 }
-api = 'https://xiapi.xiapibuy.com/api/v2/item/get?itemid={}&shopid={}'
+# 详情页，详情页数据通过一步加载 2020年3月14日17:39:30
+# api = 'https://xiapi.xiapibuy.com/api/v2/item/get?itemid={}&shopid={}'  # 台湾
+# api = 'https://shopee.co.th/api/v2/item/get?itemid={}&shopid={}'  # 泰国
+api = 'https://th.xiapibuy.com/api/v2/item/get?itemid={}&shopid={}'  # 泰国
 
 exitFlag = 0
 
@@ -41,6 +46,7 @@ def callback(ch, method, properties, body):
     # print(type(s), s)
     i = json.loads(inf)
     # print(i['itemid'], i['shopid'], i['title'], i['b_type'], i['s_type'], i['url'])
+    # 不知道这几个参数啥意思 2020年3月14日17:29:48
     itemid = i['itemid']
     shopid = i['shopid']
     b_type = i['b_type']
@@ -48,30 +54,32 @@ def callback(ch, method, properties, body):
     url = i['url']
     try:
         res = xp_session.get(api.format(itemid, shopid), headers=head).json()
-    except Exception as get_error:
-        send_task('Xiapinfo', body)
-        print('请求出错 >>>>>> ', get_error)
-    itemid = res['item']['itemid']  # 商品id
-    name = res['item']['name']  # 名称
-    sold = res['item']['sold']  # 月销量
-    price = res['item']['price'] / 100000  # 价格
-    star = res['item']['item_rating']['rating_star']  # 评分
-    cmt_count = res['item']['cmt_count']  # 评论数
-    liked_count = res['item']['liked_count']  # 喜欢人数
-    brand = res['item']['brand']  # 品牌
-    shopid = res['item']['shopid']  # 商家id
-    location = res['item']['shop_location']  # 商家地址
-    hisold = res['item']['historical_sold']  # 历史销量
-    write_db(itemid, name, sold, hisold, price, star, b_type, s_type, cmt_count, liked_count, brand, shopid, location,
-             url)
-    # 通知队列消息完成
-    ch.basic_ack(delivery_tag=method.delivery_tag)
+        itemid = res['item']['itemid']  # 商品id
+        name = res['item']['name']  # 名称
+        sold = res['item']['sold']  # 月销量
+        price = res['item']['price'] / 100000  # 价格
+        star = res['item']['item_rating']['rating_star']  # 评分
+        cmt_count = res['item']['cmt_count']  # 评论数
+        liked_count = res['item']['liked_count']  # 喜欢人数
+        brand = res['item']['brand']  # 品牌
+        shopid = res['item']['shopid']  # 商家id
+        location = res['item']['shop_location']  # 商家地址
+        hisold = res['item']['historical_sold']
+        # 数据写入数据库 2020年3月20日10:11:07
+        write_db(itemid, name, sold, hisold, price, star, b_type, s_type, cmt_count, liked_count, brand, shopid,
+                 location,
+                 url)
+    except Exception as error:
+        # 这个是商品信息url吧，2020年3月19日16:33:59
+        print(f'{error}')
+    finally:
+        ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
 def write_db(itemid, name, sold, hisold, price, star, b_type, s_type, cmt_count, liked_count, brand, shopid, location, url):
     print(itemid, name, sold, hisold, price, star, b_type, s_type, cmt_count, liked_count, brand, shopid, location)
     sql = """
-        INSERT IGNORE INTO Xiapi(商品id,名称,销量,历史销量,价格,评分,大类别,小类别,评论数,喜欢人数,品牌,商家id,商家地址,link
+        INSERT IGNORE INTO thXiapi(商品id,名称,销量,历史销量,价格,评分,大类别,小类别,评论数,喜欢人数,品牌,商家id,商家地址,link
         ) VALUES('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}','{9}','{10}','{11}','{12}','{13}')
     """
     try:

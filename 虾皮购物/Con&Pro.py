@@ -12,17 +12,16 @@ xp_session = requests.session()
 ua = UserAgent()
 db_pool = get_db_pool(False)
 head = {
-    'Host': 'xiapi.xiapibuy.com',
+    # 'Host': 'shopee.co.th',
+    'Host': 'th.xiapibuy.com',
     'User-Agent': ua.random,
     'Accept': '*/*',
     'Accept-Language': 'zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2',
     'Accept-Encoding': 'gzip, deflate, br',
-    # 'Referer': 'https://xiapi.xiapibuy.com/%E5%B0%8F%E5%8F%AF%E6%84%9B-%E8%83%8C%E5%BF%83-cat.62.2165',
     'X-Requested-With': 'XMLHttpRequest',
     'X-API-SOURCE': 'pc',
     'DNT': '1',
     'Connection': 'keep-alive',
-    # 'Cookie': '_gcl_au=1.1.432545707.1577329245; SPC_IA=-1; SPC_EC=-; SPC_F=fa6Tt3DeFaR8tjgTmSwTrdZInnM8jYaa; REC_T_ID=e9bcd9ea-278b-11ea-b67d-9c741a644d45; SPC_T_ID="Orxm3siHYzIiOa2ZQvyqRTkWXsNumArS/7eIXJgd6cZoBtsh7sgGwybyCz86DVh6SN+WnsGce4JdcfCaSqRoM1DWQ1fbjq0HAhv/kTOnftk="; SPC_U=-; SPC_T_IV="JKgl7YCaLsARIQgm/sheIg=="; __BWfp=c1577329249525x816a2f680; cto_bundle=qEyMzl9XSkRyZld0d1lCelNBMnM2TWxvJTJCQ2JqaUh3UXh4cjVRVmI5YTd3T2lNUXVzUDFSWWJXM3JyWU50bklqek1LdXElMkIlMkZYJTJCRXBMeTQ2SXpSWW9ZMk1hbE10dzRWcGt5MkhnVDNRejhzclU5M3dra3k3OCUyQlZJMUk1b1R1UVVpajRkN3JvNGcxZ1lDJTJCNVZvMkJzR0dzclclMkZWc3hoNldHWUY5MHBlMnIxMmpwMVNFWSUzRA; _ga=GA1.2.582021135.1577329325; _med=refer; SPC_SI=ak2ho3wwm1ebkdgmteromq50qqkg9s2g; csrftoken=mUYYXxQU1ZbcM6ii26DwoUVnk60t7SQe; welcomePkgShown=true',
     'TE': 'Trailers'
 }
 
@@ -52,14 +51,15 @@ def callback(ch, method, properties, body):
         print(i['big'], i['small'], i['link'])
         # 调用解析函数
         par(i['big'], i['small'], i['link'])
-        # 通知队列消息完成
-        ch.basic_ack(delivery_tag=method.delivery_tag)
         # time.sleep(1.5)
     except Exception as e:
         # 出现异常把消息重新放入队列
         send_task('Xiapi', body)
         print('Error  >>>>>>  ', e)
         time.sleep(2)
+    finally:
+        # 管你有没有出错，都通知队列消息完成，2020年3月20日09:24:39
+        ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
 def par(big, small, api):
@@ -73,7 +73,8 @@ def par(big, small, api):
         title = i['name']  # 标题
         b_type = big
         s_type = small
-        link = 'https://xiapi.xiapibuy.com/' + title.replace(' ', '-') + '-i.' + str(shopid) + '.' + str(itemid)
+        # link = 'https://shopee.co.th/' + title.replace(' ', '-') + '-i.' + str(shopid) + '.' + str(itemid)
+        link = 'https://th.xiapibuy.com' + title.replace(' ', '-') + '-i.' + str(shopid) + '.' + str(itemid)
         # print(in_list)
         in_fo['itemid'] = itemid
         in_fo['shopid'] = shopid
@@ -82,6 +83,7 @@ def par(big, small, api):
         in_fo['s_type'] = s_type
         in_fo['url'] = link
         # print(json.dumps(in_fo))
+        # 这个是商品信息队列，2020年3月19日16:35:32
         send_task('Xiapinfo', json.dumps(in_fo))
 
 
