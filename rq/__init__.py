@@ -1,13 +1,13 @@
 import pika
 
 
-credentials = pika.PlainCredentials('zhaoxp', '100798')
+credentials = pika.PlainCredentials('name', 'pwd')
 
 
 # 发送端，生产者
 def send_task(queue_name, task):
     connection = pika.BlockingConnection(pika.ConnectionParameters(
-        host='47.97.166.98', credentials=credentials))
+        host='localhost', credentials=credentials))
     channel = connection.channel()
     # 声明一个exchange
     channel.exchange_declare(exchange='messages', exchange_type='direct')
@@ -32,7 +32,7 @@ def send_task(queue_name, task):
 # 接收端，消费者
 def recv_task(queue_name, callback):
     connection = pika.BlockingConnection(pika.ConnectionParameters(
-        host='47.97.166.98', credentials=credentials))
+        host='localhost', credentials=credentials))
     channel = connection.channel()
     # 声明一个exchange
     channel.exchange_declare(exchange='messages', exchange_type='direct')
