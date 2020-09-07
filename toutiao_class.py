@@ -1,12 +1,9 @@
 import requests
-import asyncio
-import aiohttp
 import time
 import datetime
 import random
 import pymongo
 from pymongo.errors import DuplicateKeyError
-from lxml import etree
 from fake_useragent import UserAgent
 import logging
 import hashlib
@@ -30,6 +27,10 @@ clint = pymongo.MongoClient(host='127.0.0.1', port=27017)
 db = clint.Spider
 
 
+def try_again():
+    pass
+
+
 def encrypt_md5(arg):
     # 创建md5对象
     md5 = hashlib.md5()
@@ -41,9 +42,11 @@ def encrypt_md5(arg):
 
 def kk():
     all_keyword = []
-    ks = requests.get(url='').json()
-    for k in ks:
-        all_keyword += _word_split(k['keyword'])
+    # ks = requests.get(url='').json()
+    # for k in ks:
+    #     all_keyword += _word_split(k['keyword'])
+    str_a = '(中国电科|中国电子科技集团|中国电子科技集团公司|这个电子科技集团有限公司|中电集团|中电科|电科集团|((中国电科|中电科)&(研究所|公司|集团)))&!中国电科院'
+    all_keyword += _word_split(str_a)
     return all_keyword
 
 
@@ -52,7 +55,8 @@ class Toutiao(object):
         self._domain = 'https://www.toutiao.com'
         self._search_api = 'https://www.toutiao.com/api/search/content'
         self._head = {
-            'User-Agent': ua.random
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:79.0) Gecko/20100101 Firefox/79.0',
+            'Accept-Encoding': 'gzip, deflate, br'
         }
         self._session = requests.session()
         self._keyword = kwd
@@ -74,8 +78,8 @@ class Toutiao(object):
     def checking(self, resp):
         """
         验证response响应数据是否为空
-        :param resp:
-        :return:
+        :param resp: 响应数据
+        :return: 是否返回数据, 正常是list
         """
         json_data = resp.json()
         if isinstance(json_data['data'], list):
@@ -87,7 +91,11 @@ class Toutiao(object):
             return False
 
     def parse_list(self, resp):
-
+        """
+        解析返回响应把文章id放入mongodb
+        :param resp: 响应
+        :return:
+        """
         json_data = resp.json()
         for data in json_data['data']:
             if 'article_url' in data.keys():
@@ -101,6 +109,10 @@ class Toutiao(object):
 
 
 def in_queue():
+    """
+    查询所有未完成的任务并放入队列
+    :return:
+    """
     find_results = db.toutiao.find({'status': 0})
     for find_result in find_results:
         q.put(find_result)
@@ -109,6 +121,7 @@ def in_queue():
 class Work(Thread):
     def run(self):
         while True:
+            # 判断queue是否为空，为空则从数据库中去未完成的任务
             if not q.empty():
                 t = q.get()['article_id']
                 detail_parse(t)
@@ -135,8 +148,17 @@ if __name__ == '__main__':
         while True:
             res = toutiao.get_list(o=offset)
             if toutiao.checking(res):
-                ts = toutiao.parse_list(res)
+                toutiao.parse_list(res)
                 time.sleep(random.randint(3, 7))
                 offset += 20
+                continue
             else:
+                for _ in range(3):
+                    res = toutiao.get_list(o=offset)
+                    if toutiao.checking(res):
+                        toutiao.parse_list(res)
+                        time.sleep(random.randint(2, 5))
+                        continue
+                    else:
+                        logging.warning('仍然没有数据')
                 break
