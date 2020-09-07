@@ -41,7 +41,7 @@ def encrypt_md5(arg):
 
 def kk():
     all_keyword = []
-    ks = requests.get(url='http://192.168.10.129:8083/api/zdyjc/searchGxyjcShipin').json()
+    ks = requests.get(url='').json()
     for k in ks:
         all_keyword += _word_split(k['keyword'])
     return all_keyword
